@@ -1,8 +1,11 @@
+using System;
 using AuctionService.Data;
 using AuctionService.DTOs;
 using AuctionService.Entities;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Contracts;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +13,8 @@ namespace AuctionService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuctionsController(AuctionDbContext context, IMapper mapper) : ControllerBase
+public class AuctionsController(AuctionDbContext context, IMapper mapper,
+    IPublishEndpoint publishEndpoint) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<AuctionDto>>> GetAllAuctions(string? date)
@@ -47,8 +51,11 @@ public class AuctionsController(AuctionDbContext context, IMapper mapper) : Cont
 
         context.Auctions.Add(auction);
 
-        var result = await context.SaveChangesAsync();
+        var newAuction = mapper.Map<AuctionDto>(auction);
 
+        await publishEndpoint.Publish(mapper.Map<AuctionCreated>(newAuction));
+
+        var result = await context.SaveChangesAsync();
         if (result == 0) return BadRequest("Could not save changes to DB");
 
         return CreatedAtAction(nameof(GetAuctionById),
@@ -71,8 +78,9 @@ public class AuctionsController(AuctionDbContext context, IMapper mapper) : Cont
         auction.Item.Mileage = updateAuctionDto.Mileage ?? auction.Item.Mileage;
         auction.Item.Year = updateAuctionDto.Year ?? auction.Item.Year;
 
-        var result = await context.SaveChangesAsync() > 0;
+        await publishEndpoint.Publish(mapper.Map<AuctionUpdated>(auction));
 
+        var result = await context.SaveChangesAsync() > 0;
         if (result) return Ok();
 
         return BadRequest("Problem saving changes");
@@ -89,8 +97,9 @@ public class AuctionsController(AuctionDbContext context, IMapper mapper) : Cont
 
         context.Auctions.Remove(auction);
 
-        var result = await context.SaveChangesAsync() > 0;
+        await publishEndpoint.Publish<AuctionDeleted>(new { Id = auction.Id.ToString() });
 
+        var result = await context.SaveChangesAsync() > 0;
         if (!result) return BadRequest("Could not update DB");
 
         return Ok();
