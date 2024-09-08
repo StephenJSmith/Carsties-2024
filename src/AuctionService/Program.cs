@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
 builder.Services.AddControllers();
 builder.Services.AddDbContext<AuctionDbContext>(opt =>
 {
@@ -24,10 +25,17 @@ builder.Services.AddMassTransit(x =>
     });
 
     x.AddConsumersFromNamespaceContaining<AuctionCreatedFaultConsumer>();
+
     x.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter("auction", false));
 
     x.UsingRabbitMq((context, cfg) =>
     {
+        cfg.Host(builder.Configuration["RabbitMq:Host"], "/", h =>
+        {
+            h.Username(builder.Configuration.GetValue("RabbitMQ:Username", "guest")!);
+            h.Password(builder.Configuration.GetValue("RabbitMQ:Password", "guest")!);
+        });
+
         cfg.ConfigureEndpoints(context);
     });
 });
@@ -48,10 +56,15 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-try  {
+app.MapControllers();
+
+try
+{
     DbInitializer.InitDb(app);
-} catch (Exception ex) {
-    Console.WriteLine(ex);
+}
+catch (Exception e)
+{
+    Console.WriteLine(e);
 }
 
 app.Run();
