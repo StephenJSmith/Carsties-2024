@@ -24,7 +24,7 @@ services:
       - "15672:15672"
   auction-svc:
     image: trycatchlearn/auction-svc:latest
-    build: 
+    build:
       context: .
       dockerfile: src/AuctionService/Dockerfile
     environment:
@@ -85,7 +85,7 @@ services:
       - 6001:80
   bid-svc:
     image: trycatchlearn/bid-svc:latest
-    build: 
+    build:
       context: .
       dockerfile: src/BiddingService/Dockerfile
     environment:
@@ -99,4 +99,17 @@ services:
       - 7003:80
     depends_on:
       - mongodb
+      - rabbitmq
+  notify-svc:
+    image: trycatchlearn/notify-svc:latest
+    build:
+      context: .
+      dockerfile: src/NotificationService/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - RabbitMq__Host=rabbitmq
+    ports:
+      - 7004:80
+    depends_on:
       - rabbitmq
