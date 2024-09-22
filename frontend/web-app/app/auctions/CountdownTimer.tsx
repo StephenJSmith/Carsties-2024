@@ -1,5 +1,7 @@
 "use client";
 
+import { useBidStore } from "@/hooks/useBidStore";
+import { usePathname } from "next/navigation";
 import Countdown, { zeroPad } from "react-countdown";
 
 type Props = {
@@ -44,7 +46,24 @@ const renderer = ({
 };
 
 const CountdownTimer = ({ auctionEnd }: Props) => {
-  return <Countdown date={auctionEnd} renderer={renderer} />;
+  const setOpen = useBidStore((state) => state.setOpen);
+  const pathname = usePathname();
+
+  const auctionFinished = () => {
+    if (pathname.includes("/auctions/details")) {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div>
+      <Countdown
+        date={auctionEnd}
+        renderer={renderer}
+        onComplete={auctionFinished}
+      />
+    </div>
+  );
 };
 
 export default CountdownTimer;
